@@ -2,7 +2,8 @@
 
     python -m foehn params foehn            # search parameters
     python -m foehn stations                # stations with foehn index
-    python -m foehn files ALT               # data files of a station
+    python -m foehn current                 # latest foehn index at all stations
+    python -m foehn files ALT              # data files of a station
     python -m foehn fetch ALT CHU -g h --start 2025-01-01 --end 2025-04-01 -o foehn.csv
 """
 
@@ -25,6 +26,9 @@ def main() -> None:
     p = sub.add_parser("stations", help="stations providing a parameter (default: foehn index)")
     p.add_argument("-p", "--parameter", default=obs.FOEHN_PARAMS["t"])
 
+    p = sub.add_parser("current", help="latest foehn index at all foehn stations")
+    p.add_argument("--map", metavar="PNG", help="also plot a map to this file")
+
     p = sub.add_parser("files", help="list data files of a station")
     p.add_argument("station")
 
@@ -43,6 +47,13 @@ def main() -> None:
         print(obs.search_parameters(a.text, a.granularity).to_string(index=False))
     elif a.cmd == "stations":
         print(obs.stations_with(a.parameter).to_string(index=False))
+    elif a.cmd == "current":
+        cur = obs.current_foehn()
+        cur["time"] = cur["time"].dt.strftime("%Y-%m-%d %H:%M UTC")
+        print(cur.drop(columns="foehn").to_string(index=False))
+        if a.map:
+            from .plot import plot_current
+            print("map written to", plot_current(a.map))
     elif a.cmd == "files":
         print(obs.station_files(a.station).drop(columns="href").to_string(index=False))
     elif a.cmd == "fetch":

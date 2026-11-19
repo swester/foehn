@@ -25,13 +25,15 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 | `wcc006h0` | hourly      | minutes of foehn in the hour |
 | `wcc006d0` | daily       | minutes of foehn in the day |
 
-Available at 40 stations (e.g. ALT Altdorf, CHU Chur, VAD Vaduz, GLA Glarus, LUG Lugano, MAG Magadino), mostly since 2004.
+Available at 39 stations (e.g. ALT Altdorf, CHU Chur, VAD Vaduz, GLA Glarus, LUG Lugano, MAG Magadino), mostly since 2004.
 
 ## Usage
 
 ```bash
 .venv/bin/python -m foehn params foehn          # search parameter catalogue
 .venv/bin/python -m foehn stations              # stations with foehn index
+.venv/bin/python -m foehn current               # latest foehn index + wind/T/RH at all stations
+.venv/bin/python -m foehn current --map output/foehn_current.png   # plus a map
 .venv/bin/python -m foehn files ALT             # data files of a station
 .venv/bin/python -m foehn fetch ALT CHU -g h --start 2025-01-01 --extra fkl010h0 tre200h0 -o foehn.csv
 ```

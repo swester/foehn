@@ -178,6 +178,44 @@ def load_station(station: str, granularity: str = "h", start=None, end=None,
     return df.loc[start:end - pd.Timedelta(seconds=1)]
 
 
+CURRENT_PARAMS = {
+    "wcc006s0": "foehn",       # foehn index code
+    "fkl010z0": "wind_ms",     # 10-min mean wind speed
+    "fkl010z1": "gust_ms",     # gust peak (1 s)
+    "dkl010z0": "wind_dir",    # wind direction
+    "tre200s0": "temp_c",      # 2 m temperature
+    "ure200s0": "rh_pct",      # 2 m relative humidity
+}
+
+
+def _latest(station: str) -> dict:
+    stn = station.lower()
+    url = f"{DATA_URL}/{stn}/ogd-smn_{stn}_t_now.csv"
+    df = _read_csv(_download(url, "now"))
+    df["time"] = pd.to_datetime(df["reference_timestamp"], format="%d.%m.%Y %H:%M", utc=True)
+    df = df.sort_values("time")
+    valid = df.dropna(subset=["wcc006s0"])
+    row = (valid if not valid.empty else df).iloc[-1]
+    out = {"station_abbr": station.upper(), "time": row["time"]}
+    out.update({name: row.get(p) for p, name in CURRENT_PARAMS.items()})
+    # 10-min intervals with foehn (code 2) since 00 UTC, as minutes
+    out["foehn_min_today"] = int((df["wcc006s0"] == 2).sum() * 10)
+    return out
+
+
+def current_foehn() -> pd.DataFrame:
+    """Latest 10-min foehn index plus wind/temperature/humidity at all foehn stations."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    st = foehn_stations()
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        rows = list(ex.map(_latest, st["station_abbr"]))
+    cur = pd.DataFrame(rows)
+    cur["foehn_state"] = cur["foehn"].map(FOEHN_CODES)
+    cols = ["station_abbr", "station_name", "station_canton", "height_masl"]
+    return st[cols].merge(cur, on="station_abbr")
+
+
 def load_foehn(stations: str | list[str], granularity: str = "h", start=None, end=None,
                extra: list[str] | None = None) -> pd.DataFrame:
     """Foehn index for one or several stations in long format.
